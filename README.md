@@ -16,7 +16,7 @@ linear_regression_model/
 │   ├── linear_regression/
 │   │   ├── multivariate.ipynb                  # Model building/EDA notebook (Task 1)
 │   │   ├── african_crises (1).csv              # Raw input dataset
-│   │   ├── best_inflation_model.pkl            # Saved Random Forest model
+│   │   ├── best_inflation_model.pkl            # Saved Decision Tree model
 │   │   ├── inflation_scaler.pkl                # Saved StandardScaler
 │   │   ├── inflation_correlation_heatmap.png   # Visualization files
 │   │   ├── inflation_gd_loss_curve.png         

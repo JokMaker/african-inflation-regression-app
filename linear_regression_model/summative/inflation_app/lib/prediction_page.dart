@@ -6,7 +6,7 @@ import 'dart:math' as math;
 // --- 1. Constants and Validation Data ---
 
 // NOTE: Replace this with your actual API URL after deployment!
-const String apiUrl = "http://localhost:8000/predict"; 
+const String apiUrl = "https://african-inflation-api.onrender.com/predict"; 
 
 const Map<String, String> kCountriesWithFlags = {
   "Algeria": "🇩🇿",

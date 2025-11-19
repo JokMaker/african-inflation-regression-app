@@ -30,8 +30,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
     'Zambia', 'Zimbabwe'
   ];
 
-  // Local API URL - Android emulator uses 10.0.2.2 to access host machine's localhost
-  final String apiUrl = 'http://10.0.2.2:8000/predict';
+  // Production API URL on Render
+  final String apiUrl = 'https://african-inflation-api.onrender.com/predict';
 
   Future<void> _makePrediction() async {
     if (!_formKey.currentState!.validate()) return;

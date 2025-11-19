@@ -22,9 +22,16 @@ class _PredictionScreenState extends State<PredictionScreen> {
 
   String _predictionResult = '';
   bool _isLoading = false;
+  String? _selectedCountry;
 
-  // Replace with your deployed API URL
-  final String apiUrl = 'https://your-api-url.com/predict';
+  final List<String> _countries = [
+    'Algeria', 'Angola', 'Central African Republic', 'Ivory Coast', 'Egypt',
+    'Kenya', 'Mauritius', 'Morocco', 'Nigeria', 'South Africa', 'Tunisia', 
+    'Zambia', 'Zimbabwe'
+  ];
+
+  // Local API URL - Android emulator uses 10.0.2.2 to access host machine's localhost
+  final String apiUrl = 'http://10.0.2.2:8000/predict';
 
   Future<void> _makePrediction() async {
     if (!_formKey.currentState!.validate()) return;
@@ -35,19 +42,62 @@ class _PredictionScreenState extends State<PredictionScreen> {
     });
 
     try {
+      // Build country one-hot encoding
+      Map<String, int> countryEncoding = {
+        'country_Algeria': 0,
+        'country_Angola': 0,
+        'country_Central_African_Republic': 0,
+        'country_Cote_dIvoire': 0,
+        'country_Egypt': 0,
+        'country_Kenya': 0,
+        'country_Mauritius': 0,
+        'country_Morocco': 0,
+        'country_Nigeria': 0,
+        'country_South_Africa': 0,
+        'country_Tunisia': 0,
+        'country_Zambia': 0,
+        'country_Zimbabwe': 0,
+      };
+      
+      // Map display names to API field names
+      Map<String, String> countryMapping = {
+        'Algeria': 'country_Algeria',
+        'Angola': 'country_Angola',
+        'Central African Republic': 'country_Central_African_Republic',
+        'Ivory Coast': 'country_Cote_dIvoire',
+        'Egypt': 'country_Egypt',
+        'Kenya': 'country_Kenya',
+        'Mauritius': 'country_Mauritius',
+        'Morocco': 'country_Morocco',
+        'Nigeria': 'country_Nigeria',
+        'South Africa': 'country_South_Africa',
+        'Tunisia': 'country_Tunisia',
+        'Zambia': 'country_Zambia',
+        'Zimbabwe': 'country_Zimbabwe',
+      };
+      
+      if (countryMapping.containsKey(_selectedCountry)) {
+        countryEncoding[countryMapping[_selectedCountry]!] = 1;
+      }
+
+      final requestData = {
+        'year': int.parse(_yearController.text),
+        'systemic_crisis': int.parse(_systemicCrisisController.text),
+        'exch_usd': double.parse(_exchUsdController.text),
+        'domestic_debt_in_default': int.parse(_domesticDebtController.text),
+        'sovereign_external_debt_default': int.parse(_sovereignDebtController.text),
+        'gdp_weighted_default': double.parse(_gdpWeightedController.text),
+        'inflation_crises': int.parse(_inflationCrisesController.text),
+        'banking_crisis': int.parse(_bankingCrisisController.text),
+        ...countryEncoding,
+      };
+      
+      print('Sending request: ${jsonEncode(requestData)}');
+      
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'year': int.parse(_yearController.text),
-          'systemic_crisis': int.parse(_systemicCrisisController.text),
-          'exch_usd': double.parse(_exchUsdController.text),
-          'domestic_debt_in_default': int.parse(_domesticDebtController.text),
-          'sovereign_external_debt_default': int.parse(_sovereignDebtController.text),
-          'gdp_weighted_default': double.parse(_gdpWeightedController.text),
-          'inflation_crises': int.parse(_inflationCrisesController.text),
-          'banking_crisis': int.parse(_bankingCrisisController.text),
-        }),
+        body: jsonEncode(requestData),
       );
 
       if (response.statusCode == 200) {
@@ -56,13 +106,15 @@ class _PredictionScreenState extends State<PredictionScreen> {
           _predictionResult = 'Predicted Inflation Rate: ${data['prediction']}%';
         });
       } else {
+        print('Error response: ${response.body}');
+        final errorData = jsonDecode(response.body);
         setState(() {
-          _predictionResult = 'Error: ${response.statusCode}';
+          _predictionResult = 'Error ${response.statusCode}: ${errorData['detail'] ?? 'Unknown error'}';
         });
       }
     } catch (e) {
       setState(() {
-        _predictionResult = 'Error: $e';
+        _predictionResult = 'Network Error: $e\n\nMake sure API is running on http://127.0.0.1:8000';
       });
     } finally {
       setState(() {
@@ -189,9 +241,40 @@ class _PredictionScreenState extends State<PredictionScreen> {
                   hint: '0 (No) or 1 (Yes)',
                   isInteger: true,
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedCountry,
+                    decoration: InputDecoration(
+                      labelText: 'Country',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    items: _countries.map((String country) {
+                      return DropdownMenuItem<String>(
+                        value: country,
+                        child: Text(country),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedCountry = newValue;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a country';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
                 const SizedBox(height: 30),
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _makePrediction,
+                  onPressed: (_isLoading || _selectedCountry == null) ? null : _makePrediction,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,

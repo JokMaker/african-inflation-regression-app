@@ -122,6 +122,44 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
     });
 
     try {
+      // Build country one-hot encoding
+      Map<String, int> countryEncoding = {
+        'country_Algeria': 0,
+        'country_Angola': 0,
+        'country_Central_African_Republic': 0,
+        'country_Cote_dIvoire': 0,
+        'country_Egypt': 0,
+        'country_Kenya': 0,
+        'country_Mauritius': 0,
+        'country_Morocco': 0,
+        'country_Nigeria': 0,
+        'country_South_Africa': 0,
+        'country_Tunisia': 0,
+        'country_Zambia': 0,
+        'country_Zimbabwe': 0,
+      };
+      
+      // Map display names to API field names
+      Map<String, String> countryMapping = {
+        'Algeria': 'country_Algeria',
+        'Angola': 'country_Angola',
+        'Central African Republic': 'country_Central_African_Republic',
+        'Ivory Coast': 'country_Cote_dIvoire',
+        'Egypt': 'country_Egypt',
+        'Kenya': 'country_Kenya',
+        'Mauritius': 'country_Mauritius',
+        'Morocco': 'country_Morocco',
+        'Nigeria': 'country_Nigeria',
+        'South Africa': 'country_South_Africa',
+        'Tunisia': 'country_Tunisia',
+        'Zambia': 'country_Zambia',
+        'Zimbabwe': 'country_Zimbabwe',
+      };
+      
+      if (_selectedCountry != null && countryMapping.containsKey(_selectedCountry)) {
+        countryEncoding[countryMapping[_selectedCountry]!] = 1;
+      }
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
@@ -134,7 +172,7 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
           'gdp_weighted_default': double.tryParse(_gdpDefaultController.text) ?? 0.0,
           'inflation_crises': int.tryParse(_infCrisesController.text) ?? 0,
           'banking_crisis': int.tryParse(_bankingCrisisController.text) ?? 0,
-          'country': _selectedCountry,
+          ...countryEncoding,
         }),
       ).timeout(const Duration(seconds: 20));
 

@@ -3,17 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
-import pandas as pd
 import os
-from typing import Optional
+from pathlib import Path
 
-app = FastAPI(
-    title="African Inflation Prediction API",
-    description="Predict African inflation rates using economic indicators from 13 African countries",
-    version="1.0.0"
-)
+app = FastAPI(title="African Inflation Prediction API")
 
-# Add CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,166 +17,73 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load model and scaler
-try:
-    model = joblib.load('../linear_regression/best_inflation_model.pkl')
-    scaler = joblib.load('../linear_regression/inflation_scaler.pkl')
-    print("✓ Model and scaler loaded successfully")
-except Exception as e:
-    print(f"✗ Error loading model: {e}")
-    model = None
-    scaler = None
+# Load model and scaler with flexible path handling
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / 'best_inflation_model.pkl'
+SCALER_PATH = BASE_DIR / 'inflation_scaler.pkl'
 
-# Country list for validation
-COUNTRIES = [
-    'Algeria', 'Angola', 'Central African Republic', 'Ivory Coast', 'Egypt',
-    'Kenya', 'Mauritius', 'Morocco', 'Nigeria', 'South Africa', 'Tunisia', 
-    'Zambia', 'Zimbabwe'
-]
+# Fallback to relative path if files not in same directory
+if not MODEL_PATH.exists():
+    MODEL_PATH = BASE_DIR / '../linear_regression/best_inflation_model.pkl'
+    SCALER_PATH = BASE_DIR / '../linear_regression/inflation_scaler.pkl'
 
-class PredictionRequest(BaseModel):
-    year: int = Field(..., ge=1860, le=2030, description="Year (1860-2030)")
+model = joblib.load(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
+
+class PredictionInput(BaseModel):
+    year: int = Field(..., ge=1860, le=2030, description="Year (1860-2030, dataset trained on 1860-2014)")
     systemic_crisis: int = Field(..., ge=0, le=1, description="Systemic crisis (0 or 1)")
-    exch_usd: float = Field(..., ge=0, le=1000000, description="Exchange rate to USD")
-    domestic_debt_in_default: int = Field(..., ge=0, le=1, description="Domestic debt in default (0 or 1)")
-    sovereign_external_debt_default: int = Field(..., ge=0, le=1, description="Sovereign external debt default (0 or 1)")
+    exch_usd: float = Field(..., ge=0, le=1000, description="Exchange rate to USD (0-1000)")
+    domestic_debt_in_default: int = Field(..., ge=0, le=1, description="Domestic debt default (0 or 1)")
+    sovereign_external_debt_default: int = Field(..., ge=0, le=1, description="External debt default (0 or 1)")
     gdp_weighted_default: float = Field(..., ge=0, le=1, description="GDP weighted default (0-1)")
-    inflation_crises: int = Field(..., ge=0, le=1, description="Inflation crises (0 or 1)")
+    inflation_crises: int = Field(..., ge=0, le=1, description="Inflation crisis (0 or 1)")
     banking_crisis: int = Field(..., ge=0, le=1, description="Banking crisis (0 or 1)")
-    country: str = Field(..., description=f"Country name. Must be one of: {', '.join(COUNTRIES)}")
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "year": 2020,
-                "systemic_crisis": 0,
-                "exch_usd": 15.5,
-                "domestic_debt_in_default": 0,
-                "sovereign_external_debt_default": 0,
-                "gdp_weighted_default": 0.0,
-                "inflation_crises": 0,
-                "banking_crisis": 0,
-                "country": "Nigeria"
-            }
-        }
-
-class PredictionResponse(BaseModel):
-    prediction: float
-    country: str
-    year: int
-    message: str
-    confidence: str
+    country_Algeria: int = Field(0, ge=0, le=1)
+    country_Angola: int = Field(0, ge=0, le=1)
+    country_Central_African_Republic: int = Field(0, ge=0, le=1)
+    country_Cote_dIvoire: int = Field(0, ge=0, le=1)
+    country_Egypt: int = Field(0, ge=0, le=1)
+    country_Kenya: int = Field(0, ge=0, le=1)
+    country_Mauritius: int = Field(0, ge=0, le=1)
+    country_Morocco: int = Field(0, ge=0, le=1)
+    country_Nigeria: int = Field(0, ge=0, le=1)
+    country_South_Africa: int = Field(0, ge=0, le=1)
+    country_Tunisia: int = Field(0, ge=0, le=1)
+    country_Zambia: int = Field(0, ge=0, le=1)
+    country_Zimbabwe: int = Field(0, ge=0, le=1)
 
 @app.get("/")
 def root():
     return {
         "message": "African Inflation Prediction API",
-        "description": "Predict inflation rates using African economic crisis data from 13 countries",
-        "countries": COUNTRIES,
-        "endpoints": {
-            "/predict": "POST - Make inflation prediction",
-            "/countries": "GET - List supported countries",
-            "/health": "GET - Health check",
-            "/docs": "GET - API documentation"
-        }
+        "docs": "/docs",
+        "note": "Model trained on data from 1860-2014. Predictions beyond 2014 are extrapolations."
     }
 
-@app.get("/countries")
-def get_countries():
-    return {"countries": COUNTRIES}
-
-@app.post("/predict", response_model=PredictionResponse)
-def predict_inflation(request: PredictionRequest):
-    if model is None or scaler is None:
-        raise HTTPException(status_code=500, detail="Model not loaded. Please check server configuration.")
-    
-    # Validate country
-    if request.country not in COUNTRIES:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid country. Must be one of: {', '.join(COUNTRIES)}"
-        )
-    
+@app.post("/predict")
+def predict(data: PredictionInput):
     try:
-        # Create feature vector with all 21 features
-        # Base features (8)
-        base_features = [
-            request.year,
-            request.systemic_crisis,
-            request.exch_usd,
-            request.domestic_debt_in_default,
-            request.sovereign_external_debt_default,
-            request.gdp_weighted_default,
-            request.inflation_crises,
-            request.banking_crisis
-        ]
+        features = np.array([[
+            data.year, data.systemic_crisis, data.exch_usd,
+            data.domestic_debt_in_default, data.sovereign_external_debt_default,
+            data.gdp_weighted_default, data.inflation_crises, data.banking_crisis,
+            data.country_Algeria, data.country_Angola, data.country_Central_African_Republic,
+            data.country_Cote_dIvoire, data.country_Egypt, data.country_Kenya,
+            data.country_Mauritius, data.country_Morocco, data.country_Nigeria,
+            data.country_South_Africa, data.country_Tunisia, data.country_Zambia,
+            data.country_Zimbabwe
+        ]])
         
-        # Country dummy variables (13) - one-hot encoding
-        country_features = []
-        for country in COUNTRIES:
-            country_features.append(1 if request.country == country else 0)
+        features_scaled = scaler.transform(features)
+        prediction = model.predict(features_scaled)[0]
         
-        # Combine all features
-        input_data = np.array([base_features + country_features])
-        
-        # Validate input shape
-        if input_data.shape[1] != 21:
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Feature mismatch. Expected 21 features, got {input_data.shape[1]}"
-            )
-        
-        # Scale input
-        input_scaled = scaler.transform(input_data)
-        
-        # Make prediction
-        prediction = model.predict(input_scaled)[0]
-        
-        # Determine confidence level based on historical data patterns
-        confidence = "Medium"
-        if abs(prediction) < 10:
-            confidence = "High"
-        elif abs(prediction) > 50:
-            confidence = "Low"
-        
-        return PredictionResponse(
-            prediction=round(float(prediction), 2),
-            country=request.country,
-            year=request.year,
-            message="Prediction successful",
-            confidence=confidence
-        )
-        
-    except HTTPException:
-        raise
+        return {
+            "prediction": float(prediction),
+            "unit": "Annual CPI Inflation Rate (%)"
+        }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy" if model is not None else "unhealthy",
-        "model_loaded": model is not None,
-        "scaler_loaded": scaler is not None,
-        "supported_countries": len(COUNTRIES)
-    }
-
-@app.get("/model-info")
-def model_info():
-    if model is None:
-        raise HTTPException(status_code=500, detail="Model not loaded")
-    
-    return {
-        "model_type": str(type(model).__name__),
-        "features_count": 21,
-        "base_features": [
-            "year", "systemic_crisis", "exch_usd", "domestic_debt_in_default",
-            "sovereign_external_debt_default", "gdp_weighted_default", 
-            "inflation_crises", "banking_crisis"
-        ],
-        "country_features": [f"country_{country}" for country in COUNTRIES],
-        "supported_countries": COUNTRIES
-    }
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

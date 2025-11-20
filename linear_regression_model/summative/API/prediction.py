@@ -17,18 +17,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load model and scaler with flexible path handling
+# Load model and scaler from same directory
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / 'best_inflation_model.pkl'
 SCALER_PATH = BASE_DIR / 'inflation_scaler.pkl'
 
-# Fallback to relative path if files not in same directory
-if not MODEL_PATH.exists():
-    MODEL_PATH = BASE_DIR / '../linear_regression/best_inflation_model.pkl'
-    SCALER_PATH = BASE_DIR / '../linear_regression/inflation_scaler.pkl'
-
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
+try:
+    model = joblib.load(MODEL_PATH)
+    scaler = joblib.load(SCALER_PATH)
+    print(f"✓ Model loaded from: {MODEL_PATH}")
+    print(f"✓ Scaler loaded from: {SCALER_PATH}")
+except FileNotFoundError as e:
+    print(f"ERROR: Model file not found - {e}")
+    print(f"Looking in: {BASE_DIR}")
+    raise
 
 class PredictionInput(BaseModel):
     year: int = Field(..., ge=1860, le=2030, description="Year (1860-2030, dataset trained on 1860-2014)")

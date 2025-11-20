@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:math' as math;
+import 'dart:io';
 
 // --- 1. Constants and Validation Data ---
 
 // NOTE: Replace this with your actual API URL after deployment!
-const String apiUrl = "https://african-inflation-api.onrender.com/predict"; 
+const String apiUrl = "https://african-inflation-api.onrender.com/predict";
 
 const Map<String, String> kCountriesWithFlags = {
   "Algeria": "🇩🇿",
@@ -160,21 +161,29 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         countryEncoding[countryMapping[_selectedCountry]!] = 1;
       }
 
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'year': int.tryParse(_yearController.text) ?? 2020,
-          'systemic_crisis': int.tryParse(_sysCrisisController.text) ?? 0,
-          'exch_usd': double.tryParse(_exchUsdController.text) ?? 0.0,
-          'domestic_debt_in_default': int.tryParse(_domesticDebtController.text) ?? 0,
-          'sovereign_external_debt_default': int.tryParse(_sovereignDebtController.text) ?? 0,
-          'gdp_weighted_default': double.tryParse(_gdpDefaultController.text) ?? 0.0,
-          'inflation_crises': int.tryParse(_infCrisesController.text) ?? 0,
-          'banking_crisis': int.tryParse(_bankingCrisisController.text) ?? 0,
-          ...countryEncoding,
-        }),
-      ).timeout(const Duration(seconds: 20));
+      final client = HttpClient()
+        ..badCertificateCallback = ((X509Certificate cert, String host, int port) => true);
+      
+      final requestBody = json.encode({
+        'year': int.tryParse(_yearController.text) ?? 2020,
+        'systemic_crisis': int.tryParse(_sysCrisisController.text) ?? 0,
+        'exch_usd': double.tryParse(_exchUsdController.text) ?? 0.0,
+        'domestic_debt_in_default': int.tryParse(_domesticDebtController.text) ?? 0,
+        'sovereign_external_debt_default': int.tryParse(_sovereignDebtController.text) ?? 0,
+        'gdp_weighted_default': double.tryParse(_gdpDefaultController.text) ?? 0.0,
+        'inflation_crises': int.tryParse(_infCrisesController.text) ?? 0,
+        'banking_crisis': int.tryParse(_bankingCrisisController.text) ?? 0,
+        ...countryEncoding,
+      });
+      
+      final request = await client.postUrl(Uri.parse(apiUrl)).timeout(const Duration(seconds: 20));
+      request.headers.set('Content-Type', 'application/json');
+      request.write(requestBody);
+      
+      final httpResponse = await request.close();
+      final responseBody = await httpResponse.transform(utf8.decoder).join();
+      final response = http.Response(responseBody, httpResponse.statusCode);
+      client.close();
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -528,7 +537,7 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
             child: Icon(Icons.flag, color: Colors.blue.shade600, size: 18),
           ),
         ),
-        value: _selectedCountry,
+        initialValue: _selectedCountry,
         items: kCountriesWithFlags.entries.map((entry) {
           return DropdownMenuItem<String>(
             value: entry.key,

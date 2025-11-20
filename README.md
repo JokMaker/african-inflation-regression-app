@@ -24,7 +24,7 @@ linear_regression_model/
 │   ├── API/
 │   │   ├── prediction.py                       # FastAPI code (Task 2)
 │   │   └── requirements.txt                    # Python dependencies
-│   └── FlutterApp/
+│   └── inflation_app/
 │       └── (Flutter source code files)         # Mobile application (Task 3)
 │
 └── README.md                                   # This file
@@ -50,8 +50,8 @@ linear_regression_model/
 
 ## API Endpoint
 
-**Live API URL**: https://your-deployed-api-url.com
-**Swagger Documentation**: https://your-deployed-api-url.com/docs
+**Live API URL**: https://african-inflation-api.onrender.com/predict
+**Swagger Documentation**: https://african-inflation-api.onrender.com/docs
 
 ## Video Demo
 
@@ -68,7 +68,7 @@ linear_regression_model/
 
 1. Navigate to the Flutter app directory:
    ```bash
-   cd linear_regression_model/summative/FlutterApp
+   cd linear_regression_model/summative/inflation_app
    ```
 
 2. Install dependencies:
@@ -76,8 +76,8 @@ linear_regression_model/
    flutter pub get
    ```
 
-3. Update API URL in `lib/prediction_screen.dart`:
-   - Replace `https://your-api-url.com/predict` with your actual deployed API URL
+3. The API URL is already configured in `lib/prediction_page.dart`:
+   - Current API: `https://african-inflation-api.onrender.com/predict`
 
 4. Run the app:
    ```bash

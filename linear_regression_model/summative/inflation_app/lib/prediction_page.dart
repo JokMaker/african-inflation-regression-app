@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:math' as math;
-import 'dart:io';
 
 // --- 1. Constants and Validation Data ---
 
@@ -161,10 +160,7 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         countryEncoding[countryMapping[_selectedCountry]!] = 1;
       }
 
-      final client = HttpClient()
-        ..badCertificateCallback = ((X509Certificate cert, String host, int port) => true);
-      
-      final requestBody = json.encode({
+      final requestData = {
         'year': int.tryParse(_yearController.text) ?? 2020,
         'systemic_crisis': int.tryParse(_sysCrisisController.text) ?? 0,
         'exch_usd': double.tryParse(_exchUsdController.text) ?? 0.0,
@@ -174,16 +170,19 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         'inflation_crises': int.tryParse(_infCrisesController.text) ?? 0,
         'banking_crisis': int.tryParse(_bankingCrisisController.text) ?? 0,
         ...countryEncoding,
-      });
+      };
       
-      final request = await client.postUrl(Uri.parse(apiUrl)).timeout(const Duration(seconds: 20));
-      request.headers.set('Content-Type', 'application/json');
-      request.write(requestBody);
+      print('Sending to: $apiUrl');
+      print('Data: ${json.encode(requestData)}');
       
-      final httpResponse = await request.close();
-      final responseBody = await httpResponse.transform(utf8.decoder).join();
-      final response = http.Response(responseBody, httpResponse.statusCode);
-      client.close();
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestData),
+      ).timeout(const Duration(seconds: 60));
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

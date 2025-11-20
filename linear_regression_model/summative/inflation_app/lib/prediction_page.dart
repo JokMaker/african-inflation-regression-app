@@ -202,9 +202,10 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         });
       }
     } catch (e) {
+      print('Error details: $e');
       setState(() {
         _predictedValue = null;
-        _predictionResult = "Network Error: Check URL or Server Status";
+        _predictionResult = "Network Error: ${e.toString()}";
         _resultColor = Colors.red.shade700;
       });
     } finally {

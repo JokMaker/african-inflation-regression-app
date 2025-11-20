@@ -114,6 +114,14 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
   Future<void> _makePrediction() async {
     if (!_formKey.currentState!.validate()) return;
     
+    if (_selectedCountry == null) {
+      setState(() {
+        _predictionResult = "Please select a country";
+        _resultColor = Colors.red;
+      });
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _predictionResult = "Analyzing economic indicators...";

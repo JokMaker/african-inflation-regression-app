@@ -180,17 +180,11 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         ...countryEncoding,
       };
       
-      print('Sending to: $apiUrl');
-      print('Data: ${json.encode(requestData)}');
-      
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(requestData),
       ).timeout(const Duration(seconds: 60));
-      
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -209,7 +203,6 @@ class _InflationPredictionPageState extends State<InflationPredictionPage> with 
         });
       }
     } catch (e) {
-      print('Error details: $e');
       setState(() {
         _predictedValue = null;
         _predictionResult = "Network Error: ${e.toString()}";

@@ -55,7 +55,7 @@ linear_regression_model/
 
 ## Video Demo
 
-**YouTube Demo Link**: https://youtu.be/your-video-id
+**YouTube Demo Link**: https://youtu.be/CFWuXW0jb-A
 
 ## Mobile App Instructions
 
